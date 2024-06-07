@@ -1,9 +1,8 @@
 variable "location" {
   type        = string
-  description = "Azure region where the resource should be deployed."
-  nullable    = false
+  default     = null
+  description = "Azure region where the resource should be deployed.  If null, the location will be inferred from the resource group location."
 }
-
 # This is required for most resource modules
 variable "resource_group_name" {
   type        = string
