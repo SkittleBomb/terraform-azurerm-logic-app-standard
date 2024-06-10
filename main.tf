@@ -84,19 +84,24 @@ resource "azurerm_logic_app_standard" "this" {
       http2_enabled            = lookup(site_config.value, "http2_enabled", null)
 
       dynamic "ip_restriction" {
-        for_each = lookup(site_config.value, "ip_restriction", []) != null ? [lookup(site_config.value, "ip_restriction", [])] : []
+        for_each = lookup(site_config.value, "ip_restriction", []) != null ? lookup(site_config.value, "ip_restriction", []) : []
         content {
-          ip_address                = lookup(ip_restriction.value, "ip_address", null)
-          service_tag               = lookup(ip_restriction.value, "service_tag", null)
-          virtual_network_subnet_id = lookup(ip_restriction.value, "virtual_network_subnet_id", null)
-          name                      = lookup(ip_restriction.value, "name", null)
-          priority                  = lookup(ip_restriction.value, "priority", null)
-          action                    = lookup(ip_restriction.value, "action", null)
-          headers                   = lookup(ip_restriction.value, "headers", null)
+          ip_address                = ip_restriction.value.ip_address != null ? ip_restriction.value.ip_address : null
+          service_tag               = ip_restriction.value.service_tag != null ? ip_restriction.value.service_tag : null
+          virtual_network_subnet_id = ip_restriction.value.virtual_network_subnet_id != null ? ip_restriction.value.virtual_network_subnet_id : null
+          name                      = ip_restriction.value.name != null ? ip_restriction.value.name : null
+          priority                  = ip_restriction.value.priority != null ? ip_restriction.value.priority : null
+          action                    = ip_restriction.value.action != null ? ip_restriction.value.action : null
+          headers {
+            x_azure_fdid      = try(ip_restriction.value.headers.x_azure_fdid, [])
+            x_fd_health_probe = try(ip_restriction.value.headers.x_fd_health_probe, [])
+            x_forwarded_for   = try(ip_restriction.value.headers.x_forwarded_for, [])
+            x_forwarded_host  = try(ip_restriction.value.headers.x_forwarded_host, [])
+          }
         }
       }
       dynamic "scm_ip_restriction" {
-        for_each = lookup(site_config.value, "scm_ip_restriction", []) != null ? [lookup(site_config.value, "scm_ip_restriction", [])] : []
+        for_each = lookup(site_config.value, "scm_ip_restriction", []) != null ? lookup(site_config.value, "scm_ip_restriction", []) : []
         content {
           ip_address                = lookup(scm_ip_restriction.value, "ip_address", null)
           service_tag               = lookup(scm_ip_restriction.value, "service_tag", null)
@@ -104,7 +109,13 @@ resource "azurerm_logic_app_standard" "this" {
           name                      = lookup(scm_ip_restriction.value, "name", null)
           priority                  = lookup(scm_ip_restriction.value, "priority", null)
           action                    = lookup(scm_ip_restriction.value, "action", null)
-          headers                   = lookup(scm_ip_restriction.value, "headers", null)
+
+          headers {
+            x_azure_fdid      = try(lookup(scm_ip_restriction.value.headers, "x_azure_fdid", []), [])
+            x_fd_health_probe = try(lookup(scm_ip_restriction.value.headers, "x_fd_health_probe", []), [])
+            x_forwarded_for   = try(lookup(scm_ip_restriction.value.headers, "x_forwarded_for", []), [])
+            x_forwarded_host  = try(lookup(scm_ip_restriction.value.headers, "x_forwarded_host", []), [])
+          }
         }
       }
       scm_use_main_ip_restriction      = lookup(site_config.value, "scm_use_main_ip_restriction", null)

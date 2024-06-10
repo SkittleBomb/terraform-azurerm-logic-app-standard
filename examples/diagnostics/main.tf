@@ -74,7 +74,7 @@ module "logic_app_standard" {
   source = "../../"
   # source             = "Azure/avm-<res/ptn>-<name>/azurerm"
   # ...
-  name                       = module.naming.app_service_plan.name_unique
+  name                       = "${module.naming.app_service_plan.name_unique}-la"
   resource_group_name        = azurerm_resource_group.this.name
   app_service_plan_id        = azurerm_service_plan.this.id
   storage_account_access_key = azurerm_storage_account.this.primary_access_key
