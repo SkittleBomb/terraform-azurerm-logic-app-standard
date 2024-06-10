@@ -203,9 +203,18 @@ module "logic_app_standard" {
         service_tag = "LogicApps"
         priority    = 100
         action      = "Allow"
+        headers = {
+          x_azure_fdid      = ["550e8400-e29b-41d4-a716-446655440000", "550e8400-e29b-41d4-a716-446655440001"] # Example valid UUIDs
+          x_fd_health_probe = ["1"]
+          x_forwarded_for   = ["172.16.4.0/24", "192.168.1.0/24"]
+          x_forwarded_host  = ["example.com", "anotherexample.com"]
+        }
       }
     ]
   }
+
+
+
 
   identity = {
     type = "SystemAssigned"

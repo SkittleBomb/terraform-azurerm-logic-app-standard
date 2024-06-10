@@ -56,28 +56,50 @@ resource "azurerm_log_analytics_workspace" "this" {
   resource_group_name = azurerm_resource_group.this.name
 }
 
-# Create Data Factory with Diagnostic Settings
-module "data_factory" {
-  source = "../../"
 
-  name                = module.naming.data_factory.name_unique
+resource "azurerm_storage_account" "this" {
+  name                     = module.naming.storage_account.name_unique
+  resource_group_name      = azurerm_resource_group.this.name
+  location                 = azurerm_resource_group.this.location
+  account_tier             = "Standard"
+  account_replication_type = "LRS"
+}
+
+resource "azurerm_service_plan" "this" {
+  name                = module.naming.app_service_plan.name_unique
+  location            = azurerm_resource_group.this.location
   resource_group_name = azurerm_resource_group.this.name
+  os_type             = "Windows"
+  sku_name            = "WS1"
+}
+# This is the module call
+# Do not specify location here due to the randomization above.
+# Leaving location as `null` will cause the module to use the resource group location
+# with a data source.
+module "logic_app_standard" {
+  source = "../../"
+  # source             = "Azure/avm-<res/ptn>-<name>/azurerm"
+  # ...
+  name                       = "${module.naming.app_service_plan.name_unique}-la"
+  resource_group_name        = azurerm_resource_group.this.name
+  app_service_plan_id        = azurerm_service_plan.this.id
+  storage_account_access_key = azurerm_storage_account.this.primary_access_key
+  storage_account_name       = azurerm_storage_account.this.name
 
-  public_network_enabled = false
+  site_config = {
+    always_on       = true
+    app_scale_limit = 1
+    ftps_state      = "Disabled"
+    http2_enabled   = true
+  }
 
   diagnostic_settings = {
     diagnostic_settings1 = {
-      name                           = "diag-${module.naming.data_factory.name_unique}"
+      name                           = "diag-${module.naming.app_service_plan.name_unique}"
       workspace_resource_id          = azurerm_log_analytics_workspace.this.id
       log_analytics_destination_type = "Dedicated"
     }
   }
-
-  tags = {
-    environment = "test"
-    function    = "datafactory"
-  }
-
 }
 ```
 
@@ -106,6 +128,8 @@ The following resources are used by this module:
 
 - [azurerm_log_analytics_workspace.this](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/log_analytics_workspace) (resource)
 - [azurerm_resource_group.this](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/resource_group) (resource)
+- [azurerm_service_plan.this](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/service_plan) (resource)
+- [azurerm_storage_account.this](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/storage_account) (resource)
 - [random_integer.region_index](https://registry.terraform.io/providers/hashicorp/random/latest/docs/resources/integer) (resource)
 
 <!-- markdownlint-disable MD013 -->
@@ -125,7 +149,7 @@ No outputs.
 
 The following Modules are called:
 
-### <a name="module_data_factory"></a> [data\_factory](#module\_data\_factory)
+### <a name="module_logic_app_standard"></a> [logic\_app\_standard](#module\_logic\_app\_standard)
 
 Source: ../../
 

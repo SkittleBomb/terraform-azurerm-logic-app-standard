@@ -57,17 +57,12 @@ resource "azurerm_storage_account" "this" {
   account_replication_type = "LRS"
 }
 
-resource "azurerm_app_service_plan" "this" {
+resource "azurerm_service_plan" "this" {
   name                = module.naming.app_service_plan.name_unique
   location            = azurerm_resource_group.this.location
   resource_group_name = azurerm_resource_group.this.name
-  kind                = "elastic"
-
-
-  sku {
-    tier = "WorkflowStandard"
-    size = "WS1"
-  }
+  os_type             = "Windows"
+  sku_name            = "WS1"
 }
 # This is the module call
 # Do not specify location here due to the randomization above.
@@ -77,14 +72,17 @@ module "logic_app_standard" {
   source = "../../"
   # source             = "Azure/avm-<res/ptn>-<name>/azurerm"
   # ...
-  location                   = azurerm_resource_group.this.location
   name                       = module.naming.app_service_plan.name_unique
   resource_group_name        = azurerm_resource_group.this.name
-  app_service_plan_id        = azurerm_app_service_plan.this.id
+  app_service_plan_id        = azurerm_service_plan.this.id
   storage_account_access_key = azurerm_storage_account.this.primary_access_key
   storage_account_name       = azurerm_storage_account.this.name
-
-
+  site_config = {
+    always_on       = true
+    app_scale_limit = 1
+    ftps_state      = "Disabled"
+    http2_enabled   = true
+  }
 }
 ```
 
@@ -111,8 +109,8 @@ The following providers are used by this module:
 
 The following resources are used by this module:
 
-- [azurerm_app_service_plan.this](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/app_service_plan) (resource)
 - [azurerm_resource_group.this](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/resource_group) (resource)
+- [azurerm_service_plan.this](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/service_plan) (resource)
 - [azurerm_storage_account.this](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/storage_account) (resource)
 - [random_integer.region_index](https://registry.terraform.io/providers/hashicorp/random/latest/docs/resources/integer) (resource)
 

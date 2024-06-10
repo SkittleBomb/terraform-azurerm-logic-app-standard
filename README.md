@@ -26,8 +26,8 @@ The following resources are used by this module:
 
 - [azurerm_logic_app_standard.this](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/logic_app_standard) (resource)
 - [azurerm_management_lock.this](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/management_lock) (resource)
-- [azurerm_private_endpoint.this_managed_dns_zone_groups](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/private_endpoint) (resource)
-- [azurerm_private_endpoint.this_unmanaged_dns_zone_groups](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/private_endpoint) (resource)
+- [azurerm_monitor_diagnostic_setting.this](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/monitor_diagnostic_setting) (resource)
+- [azurerm_private_endpoint.this](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/private_endpoint) (resource)
 - [azurerm_private_endpoint_application_security_group_association.this](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/private_endpoint_application_security_group_association) (resource)
 - [azurerm_role_assignment.this](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/role_assignment) (resource)
 - [azurerm_resource_group.parent](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/data-sources/resource_group) (data source)
@@ -40,12 +40,6 @@ The following input variables are required:
 ### <a name="input_app_service_plan_id"></a> [app\_service\_plan\_id](#input\_app\_service\_plan\_id)
 
 Description: The ID of the App Service Plan within which to create this Logic App
-
-Type: `string`
-
-### <a name="input_location"></a> [location](#input\_location)
-
-Description: Azure region where the resource should be deployed.
 
 Type: `string`
 
@@ -183,7 +177,7 @@ map(object({
     log_categories                           = optional(set(string), [])
     log_groups                               = optional(set(string), ["allLogs"])
     metric_categories                        = optional(set(string), ["AllMetrics"])
-    log_analytics_destination_type           = optional(string, "Dedicated")
+    log_analytics_destination_type           = optional(string, null)
     workspace_resource_id                    = optional(string, null)
     storage_account_resource_id              = optional(string, null)
     event_hub_authorization_rule_resource_id = optional(string, null)
@@ -240,6 +234,14 @@ Default:
 }
 ```
 
+### <a name="input_location"></a> [location](#input\_location)
+
+Description: Azure region where the resource should be deployed.  If null, the location will be inferred from the resource group location.
+
+Type: `string`
+
+Default: `null`
+
 ### <a name="input_lock"></a> [lock](#input\_lock)
 
 Description: Controls the Resource Lock configuration for this resource. The following properties can be specified:
@@ -258,29 +260,12 @@ object({
 
 Default: `null`
 
-### <a name="input_managed_identities"></a> [managed\_identities](#input\_managed\_identities)
-
-Description: Controls the Managed Identity configuration on this resource. The following properties can be specified:
-
-- `system_assigned` - (Optional) Specifies if the System Assigned Managed Identity should be enabled.
-- `user_assigned_resource_ids` - (Optional) Specifies a list of User Assigned Managed Identity resource IDs to be assigned to this resource.
-
-Type:
-
-```hcl
-object({
-    system_assigned            = optional(bool, false)
-    user_assigned_resource_ids = optional(set(string), [])
-  })
-```
-
-Default: `{}`
-
 ### <a name="input_private_endpoints"></a> [private\_endpoints](#input\_private\_endpoints)
 
-Description: A map of private endpoints to create on this resource. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time.
+Description: A map of private endpoints to create on the Key Vault. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time.
 
 - `name` - (Optional) The name of the private endpoint. One will be generated if not set.
+- `subresource_name` - The subresource name for the private endpoint. Must be one of the supported subresource names for storage account private endpoints, such as "blob", "file", "queue", "table", "dfs" or "web".
 - `role_assignments` - (Optional) A map of role assignments to create on the private endpoint. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time. See `var.role_assignments` for more information.
 - `lock` - (Optional) The lock level to apply to the private endpoint. Default is `None`. Possible values are `None`, `CanNotDelete`, and `ReadOnly`.
 - `tags` - (Optional) A mapping of tags to assign to the private endpoint.
@@ -291,7 +276,7 @@ Description: A map of private endpoints to create on this resource. The map key 
 - `private_service_connection_name` - (Optional) The name of the private service connection. One will be generated if not set.
 - `network_interface_name` - (Optional) The name of the network interface. One will be generated if not set.
 - `location` - (Optional) The Azure location where the resources will be deployed. Defaults to the location of the resource group.
-- `resource_group_name` - (Optional) The resource group where the resources will be deployed. Defaults to the resource group of this resource.
+- `resource_group_name` - (Optional) The resource group where the resources will be deployed. Defaults to the resource group of the Key Vault.
 - `ip_configurations` - (Optional) A map of IP configurations to create on the private endpoint. If not specified the platform will create one. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time.
   - `name` - The name of the IP configuration.
   - `private_ip_address` - The private IP address of the IP configuration.
@@ -300,7 +285,8 @@ Type:
 
 ```hcl
 map(object({
-    name = optional(string, null)
+    name             = optional(string, null)
+    subresource_name = string
     role_assignments = optional(map(object({
       role_definition_id_or_name             = string
       principal_id                           = string
@@ -311,10 +297,10 @@ map(object({
       delegated_managed_identity_resource_id = optional(string, null)
     })), {})
     lock = optional(object({
-      kind = string
       name = optional(string, null)
-    }), null)
-    tags                                    = optional(map(string), null)
+      kind = optional(string, "None")
+    }), {})
+    tags                                    = optional(map(any), null)
     subnet_resource_id                      = string
     private_dns_zone_group_name             = optional(string, "default")
     private_dns_zone_resource_ids           = optional(set(string), [])
@@ -331,14 +317,6 @@ map(object({
 ```
 
 Default: `{}`
-
-### <a name="input_private_endpoints_manage_dns_zone_group"></a> [private\_endpoints\_manage\_dns\_zone\_group](#input\_private\_endpoints\_manage\_dns\_zone\_group)
-
-Description: Whether to manage private DNS zone groups with this module. If set to false, you must manage private DNS zone groups externally, e.g. using Azure Policy.
-
-Type: `bool`
-
-Default: `true`
 
 ### <a name="input_role_assignments"></a> [role\_assignments](#input\_role\_assignments)
 
@@ -371,48 +349,7 @@ Default: `{}`
 
 ### <a name="input_site_config"></a> [site\_config](#input\_site\_config)
 
-Description: A site\_config block that supports the following:
-- `always_on` - (Optional) Should the Logic App be loaded at all times? Defaults to false.
-- `app_scale_limit` - (Optional) The number of workers this Logic App can scale out to. Only applicable to apps on the Consumption and Premium plan.
-- `cors` - (Optional) A cors block as defined below.
-  - `allowed_origins` - (Required) A list of origins which should be able to make cross-origin calls. * can be used to allow all calls.
-  - `support_credentials` - (Optional) Are credentials supported?
-- `dotnet_framework_version` - (Optional) The version of the .NET framework's CLR used in this Logic App Possible values are v4.0 (including .NET Core 2.1 and 3.1), v5.0 and v6.0. For more information on which .NET Framework version to use based on the runtime version you're targeting - please see this table. Defaults to v4.0.
-- `elastic_instance_minimum` - (Optional) The number of minimum instances for this Logic App Only affects apps on the Premium plan.
-- `ftps_state` - (Optional) State of FTP / FTPS service for this Logic App Possible values include: AllAllowed, FtpsOnly and Disabled. Defaults to AllAllowed.
-- `health_check_path` - (Optional) Path which will be checked for this Logic App health.
-- `http2_enabled` - (Optional) Specifies whether or not the HTTP2 protocol should be enabled. Defaults to false.
-- `ip_restriction` - (Optional) A list of ip\_restriction objects representing IP restrictions as defined below.
-  - `ip_address` - (Optional) The IP Address used for this IP Restriction in CIDR notation.
-  - `service_tag` - (Optional) The Service Tag used for this IP Restriction.
-  - `virtual_network_subnet_id` - (Optional) The Virtual Network Subnet ID used for this IP Restriction.
-  - `name` - (Optional) The name for this IP Restriction.
-  - `priority` - (Optional) The priority for this IP Restriction. Restrictions are enforced in priority order. By default, the priority is set to 65000 if not specified.
-  - `action` - (Optional) Does this restriction Allow or Deny access for this IP range. Defaults to Allow.
- - `headers` - (Optional) The headers block for this specific as a ip\_restriction block as defined below.
-    - `x_azure_fdid` - (Optional) A list of allowed Azure FrontDoor IDs in UUID notation with a maximum of 8.
-    - `x_fd_health_probe` - (Optional) A list to allow the Azure FrontDoor health probe header. Only allowed value is "1".
-    - `x_forwarded_for` - (Optional) A list of allowed 'X-Forwarded-For' IPs in CIDR notation with a maximum of 8.
-    - `x_forwarded_host` - (Optional) A list of allowed 'X-Forwarded-Host' domains with a maximum of 8.
-- `scm_ip_restriction` - (Optional) A list of scm\_ip\_restriction objects representing SCM IP restrictions as defined below.
-  - `ip_address` - (Optional) The IP Address used for this IP Restriction in CIDR notation.
-  - `service_tag` - (Optional) The Service Tag used for this IP Restriction.
-  - `virtual_network_subnet_id` - (Optional) The Virtual Network Subnet ID used for this IP Restriction.
-  - `name` - (Optional) The name for this IP Restriction.
-  - `priority` - (Optional) The priority for this IP Restriction. Restrictions are enforced in priority order. By default, the priority is set to 65000 if not specified.
-  - `action` - (Optional) Does this restriction Allow or Deny access for this IP range. Defaults to Allow.
-  - `headers` - (Optional) The headers block for this specific as a scm\_ip\_restriction block as defined below.
-- `scm_use_main_ip_restriction` - (Optional) Should the Logic App ip\_restriction configuration be used for the SCM too. Defaults to false.
-- `scm_min_tls_version` - (Optional) Configures the minimum version of TLS required for SSL requests to the SCM site. Possible values are 1.0, 1.1 and 1.2.
-- `scm_type` - (Optional) The type of Source Control used by the Logic App in use by the Windows Function App. Defaults to None. Possible values are: BitbucketGit, BitbucketHg, CodePlexGit, CodePlexHg, Dropbox, ExternalGit, ExternalHg, GitHub, LocalGit, None, OneDrive, Tfs, VSO, and VSTSRM
-- `linux_fx_version` - (Optional) Linux App Framework and version for the AppService, e.g. DOCKER|(golang:latest). Setting this value will also set the kind of application deployed to functionapp,linux,container,workflowapp
-- `min_tls_version` - (Optional) The minimum supported TLS version for the Logic App Possible values are 1.0, 1.1, and 1.2. Defaults to 1.2 for new Logic Apps.
-- `pre_warmed_instance_count` - (Optional) The number of pre-warmed instances for this Logic App Only affects apps on the Premium plan.
-- `public_network_access_enabled` - (Optional) Is public network access enabled? Defaults to true.
-- `runtime_scale_monitoring_enabled` - (Optional) Should Runtime Scale Monitoring be enabled?. Only applicable to apps on the Premium plan. Defaults to false.
-- `use_32_bit_worker_process` - (Optional) Should the Logic App run in 32 bit mode, rather than 64 bit mode? Defaults to true.
-- `vnet_route_all_enabled` - (Optional) Should all outbound traffic to have Virtual Network Security Groups and User Defined Routes applied.
-- `websockets_enabled` - (Optional) Should WebSockets be enabled?
+Description: A site\_config block that supports various settings for the Logic App.
 
 Type:
 
@@ -424,13 +361,39 @@ object({
       allowed_origins     = list(string)
       support_credentials = optional(bool)
     }))
-    dotnet_framework_version         = optional(string)
-    elastic_instance_minimum         = optional(number)
-    ftps_state                       = optional(string)
-    health_check_path                = optional(string)
-    http2_enabled                    = optional(bool)
-    ip_restriction                   = optional(list(object({ ip_address = optional(string), service_tag = optional(string), virtual_network_subnet_id = optional(string), name = optional(string), priority = optional(number), action = optional(string), headers = optional(list(string)) })))
-    scm_ip_restriction               = optional(list(object({ ip_address = optional(string), service_tag = optional(string), virtual_network_subnet_id = optional(string), name = optional(string), priority = optional(number), action = optional(string), headers = optional(list(string)) })))
+    dotnet_framework_version = optional(string)
+    elastic_instance_minimum = optional(number)
+    ftps_state               = optional(string)
+    health_check_path        = optional(string)
+    http2_enabled            = optional(bool)
+    ip_restriction = optional(list(object({
+      ip_address                = optional(string)
+      service_tag               = optional(string)
+      virtual_network_subnet_id = optional(string)
+      name                      = optional(string)
+      priority                  = optional(number)
+      action                    = optional(string)
+      headers = optional(object({
+        x_azure_fdid      = optional(list(string))
+        x_fd_health_probe = optional(list(string))
+        x_forwarded_for   = optional(list(string))
+        x_forwarded_host  = optional(list(string))
+      }))
+    })))
+    scm_ip_restriction = optional(list(object({
+      ip_address                = optional(string)
+      service_tag               = optional(string)
+      virtual_network_subnet_id = optional(string)
+      name                      = optional(string)
+      priority                  = optional(number)
+      action                    = optional(string)
+      headers = optional(object({
+        x_azure_fdid      = optional(list(string))
+        x_fd_health_probe = optional(list(string))
+        x_forwarded_for   = optional(list(string))
+        x_forwarded_host  = optional(list(string))
+      }))
+    })))
     scm_use_main_ip_restriction      = optional(bool)
     scm_min_tls_version              = optional(string)
     scm_type                         = optional(string)
@@ -486,10 +449,6 @@ The following outputs are exported:
 ### <a name="output_logic_app_standard"></a> [logic\_app\_standard](#output\_logic\_app\_standard)
 
 Description: This is the full output for the resource.
-
-### <a name="output_private_endpoints"></a> [private\_endpoints](#output\_private\_endpoints)
-
-Description:   A map of the private endpoints created.
 
 ## Modules
 

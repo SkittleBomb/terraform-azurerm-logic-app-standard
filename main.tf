@@ -86,17 +86,21 @@ resource "azurerm_logic_app_standard" "this" {
       dynamic "ip_restriction" {
         for_each = lookup(site_config.value, "ip_restriction", []) != null ? lookup(site_config.value, "ip_restriction", []) : []
         content {
-          ip_address                = ip_restriction.value.ip_address != null ? ip_restriction.value.ip_address : null
-          service_tag               = ip_restriction.value.service_tag != null ? ip_restriction.value.service_tag : null
-          virtual_network_subnet_id = ip_restriction.value.virtual_network_subnet_id != null ? ip_restriction.value.virtual_network_subnet_id : null
-          name                      = ip_restriction.value.name != null ? ip_restriction.value.name : null
-          priority                  = ip_restriction.value.priority != null ? ip_restriction.value.priority : null
-          action                    = ip_restriction.value.action != null ? ip_restriction.value.action : null
-          headers {
-            x_azure_fdid      = try(ip_restriction.value.headers.x_azure_fdid, [])
-            x_fd_health_probe = try(ip_restriction.value.headers.x_fd_health_probe, [])
-            x_forwarded_for   = try(ip_restriction.value.headers.x_forwarded_for, [])
-            x_forwarded_host  = try(ip_restriction.value.headers.x_forwarded_host, [])
+          ip_address                = lookup(ip_restriction.value, "ip_address", null)
+          service_tag               = lookup(ip_restriction.value, "service_tag", null)
+          virtual_network_subnet_id = lookup(ip_restriction.value, "virtual_network_subnet_id", null)
+          name                      = lookup(ip_restriction.value, "name", null)
+          priority                  = lookup(ip_restriction.value, "priority", null)
+          action                    = lookup(ip_restriction.value, "action", null)
+
+          dynamic "headers" {
+            for_each = length(keys(lookup(ip_restriction.value, "headers", {}))) > 0 ? [lookup(ip_restriction.value, "headers", {})] : []
+            content {
+              x_azure_fdid      = lookup(headers.value, "x_azure_fdid", [])
+              x_fd_health_probe = lookup(headers.value, "x_fd_health_probe", [])
+              x_forwarded_for   = lookup(headers.value, "x_forwarded_for", [])
+              x_forwarded_host  = lookup(headers.value, "x_forwarded_host", [])
+            }
           }
         }
       }
@@ -110,11 +114,14 @@ resource "azurerm_logic_app_standard" "this" {
           priority                  = lookup(scm_ip_restriction.value, "priority", null)
           action                    = lookup(scm_ip_restriction.value, "action", null)
 
-          headers {
-            x_azure_fdid      = try(lookup(scm_ip_restriction.value.headers, "x_azure_fdid", []), [])
-            x_fd_health_probe = try(lookup(scm_ip_restriction.value.headers, "x_fd_health_probe", []), [])
-            x_forwarded_for   = try(lookup(scm_ip_restriction.value.headers, "x_forwarded_for", []), [])
-            x_forwarded_host  = try(lookup(scm_ip_restriction.value.headers, "x_forwarded_host", []), [])
+          dynamic "headers" {
+            for_each = length(keys(lookup(scm_ip_restriction.value, "headers", {}))) > 0 ? [lookup(scm_ip_restriction.value, "headers", {})] : []
+            content {
+              x_azure_fdid      = lookup(headers.value, "x_azure_fdid", [])
+              x_fd_health_probe = lookup(headers.value, "x_fd_health_probe", [])
+              x_forwarded_for   = lookup(headers.value, "x_forwarded_for", [])
+              x_forwarded_host  = lookup(headers.value, "x_forwarded_host", [])
+            }
           }
         }
       }
