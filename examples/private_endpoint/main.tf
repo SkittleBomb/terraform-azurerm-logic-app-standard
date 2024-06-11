@@ -197,23 +197,26 @@ module "logic_app_standard" {
     ftps_state                    = "Disabled"
     http2_enabled                 = true
     public_network_access_enabled = true
-    ip_restriction = [
-      {
-        name        = "Allow"
-        service_tag = "LogicApps"
-        priority    = 100
-        action      = "Allow"
-        headers = {
-          x_azure_fdid      = ["550e8400-e29b-41d4-a716-446655440000", "550e8400-e29b-41d4-a716-446655440001"] # Example valid UUIDs
-          x_fd_health_probe = ["1"]
-          x_forwarded_for   = ["172.16.4.0/24", "192.168.1.0/24"]
-          x_forwarded_host  = ["example.com", "anotherexample.com"]
-        }
-      }
-    ]
+    # ip_restriction = [
+    #   {
+    #     name        = "Allow"
+    #     service_tag = "LogicApps"
+    #     priority    = 100
+    #     action      = "Allow"
+    #     headers = {
+    #       x_azure_fdid      = ["550e8400-e29b-41d4-a716-446655440000", "550e8400-e29b-41d4-a716-446655440001"] # Example valid UUIDs
+    #       x_fd_health_probe = ["1"]
+    #       x_forwarded_for   = ["172.16.4.0/24", "192.168.1.0/24"]
+    #       x_forwarded_host  = ["example.com", "anotherexample.com"]
+    #     }
+    #   }
+    # ]
   }
 
-
+  app_settings = {
+    "FUNCTIONS_WORKER_RUNTIME"     = "node"
+    "WEBSITE_NODE_DEFAULT_VERSION" = "~18"
+  }
 
 
   identity = {
@@ -236,12 +239,3 @@ module "logic_app_standard" {
     }
   }
 }
-
-
-
-
-
-# resource "azurerm_app_service_virtual_network_swift_connection" "this" {
-#   app_service_id = module.logic_app_standard.logic_app_standard.id
-#   subnet_id      = azurerm_subnet.this.id
-# }

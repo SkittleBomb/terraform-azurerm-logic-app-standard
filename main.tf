@@ -138,6 +138,7 @@ resource "azurerm_logic_app_standard" "this" {
       websockets_enabled               = lookup(site_config.value, "websockets_enabled", null)
     }
   }
+  tags = var.tags
 }
 
 
