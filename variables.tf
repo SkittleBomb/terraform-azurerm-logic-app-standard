@@ -358,3 +358,15 @@ variable "tags" {
   default     = null
   description = "(Optional) Tags of the resource."
 }
+
+variable "use_private_vnet" {
+  type        = bool
+  description = "Use private network injection"
+  default     = false
+}
+
+variable "subnet_id" {
+  type        = string
+  description = "Subnet ID for the logic app"
+  default     = null
+}

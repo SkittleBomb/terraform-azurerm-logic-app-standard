@@ -189,7 +189,8 @@ module "logic_app_standard" {
   app_service_plan_id        = azurerm_service_plan.this.id
   storage_account_access_key = module.storage_account.resource.primary_access_key
   storage_account_name       = module.storage_account.resource.name
-  virtual_network_subnet_id  = azurerm_subnet.this.id
+  use_private_vnet           = true
+  subnet_id                  = azurerm_subnet.this.id
 
   site_config = {
     always_on                     = true

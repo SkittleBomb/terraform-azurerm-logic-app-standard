@@ -173,3 +173,10 @@ resource "azurerm_monitor_diagnostic_setting" "this" {
     }
   }
 }
+
+
+resource "azurerm_app_service_virtual_network_swift_connection" "this" {
+  count          = var.use_private_vnet ? 1 : 0
+  app_service_id = azurerm_logic_app_standard.this.id
+  subnet_id      = var.subnet_id
+}
